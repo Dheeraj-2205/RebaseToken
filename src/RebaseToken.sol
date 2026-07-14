@@ -103,6 +103,10 @@ contract RebaseToken is ERC20 {
 
     }
 
+    function getInterestRate() external view returns (uint256) {
+        return s_interestRate;
+    }
+
 
     function getUserInterestRate(address _user) external view returns (uint256) {
         return s_userInterestRate[_user];
