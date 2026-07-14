@@ -59,7 +59,23 @@ contract RebaseToken is ERC20 {
         return super.transfer(_recipient, _amount);
     }
 
-    
+    function transferFrom(address _sender, address _recipient, uint256 _amount) public override returns (bool) {
+        _mintAccurateInterest(_sender);
+        _mintAccurateInterest(_recipient);
+
+        if(_amount == type(uint256).max) {
+            _amount = balanceOf(_sender);
+        }
+
+        if(balanceOf(_recipient) == 0){
+            s_userInterestRate[_recipient] = s_userInterestRate[_sender];
+        }
+
+        return super.transferFrom(_sender, _recipient, _amount);
+
+    }
+
+
 
     function _calculateUserAccumulatedInterestSinceLastUpdated(address _user) internal view returns (uint256 linearInterest){
         uint256 timeElapsed = block.timestamp - s_userLastUpdatedTimeStamp[_user];
