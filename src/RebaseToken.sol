@@ -24,6 +24,12 @@ contract RebaseToken is ERC20 {
         emit InterestRateSet(_newInterestRate);
     }
 
+    function principalBalanceOf(address _user) external view returns (uint256){
+        return super.balanceOf(_user);
+    }
+
+
+
     function mint(address _to, uint256 _amount) external {
         _mintAccurateInterest(_to);
         s_userInterestRate[_to] = s_interestRate;
@@ -77,6 +83,10 @@ contract RebaseToken is ERC20 {
 
 
 
+
+
+
+
     function _calculateUserAccumulatedInterestSinceLastUpdated(address _user) internal view returns (uint256 linearInterest){
         uint256 timeElapsed = block.timestamp - s_userLastUpdatedTimeStamp[_user];
         linearInterest = (PRECISION_FACTOR + (s_userInterestRate[_user] * timeElapsed));
@@ -93,8 +103,10 @@ contract RebaseToken is ERC20 {
 
     }
 
+
     function getUserInterestRate(address _user) external view returns (uint256) {
         return s_userInterestRate[_user];
     }
+
 
 }
