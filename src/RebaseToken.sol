@@ -31,6 +31,9 @@ contract RebaseToken is ERC20 {
     }
 
     function burn (address _from , uint256 _amount) external {
+        if(_amount > type(uint256).max) {
+            _amount = balanceOf(_from);
+        }
         _mintAccurateInterest(_from);
         _burn(_from, _amount);
     }
