@@ -3,6 +3,7 @@
 pragma solidity ^0.8.24;
 
 import {Test} from "forge-std/Test.sol";
+import {console} from "forge-std/console.sol";
 
 import {RebaseToken} from "../src/RebaseToken.sol";
 import {Vault} from "../src/Vault.sol";
@@ -29,7 +30,73 @@ contract RebaseTokenTest is Test {
         vm.stopPrank();
     }
 
-    function testDepositLinear() public {
+    function addRewardsToVault(uint256 rewardAmount) public {
+        (bool success , ) = payable(address(vault)).call{value:rewardAmount}("");
+    }
+
+    function testDepositLinear(uint256 amount) public {
+        vm.assume(amount > 1e4);
+        amount = bound(amount, 1e5, type(uint96).max);
+
+        vm.startPrank(user);
+        vm.deal(user, amount);
+        vault.deposit{value: amount}();
+        uint256 startBalance = rebaseToken.balanceOf(user);
+        console.log(startBalance , "startBalance");
+
+        assertEq(startBalance, amount);
+        vm.warp(block.timestamp + 1 hours);
+
+        uint256 middleBalance = rebaseToken.balanceOf(user);
+        assertGt(middleBalance , startBalance);
+
+
+        uint256 endBalance = rebaseToken.balanceOf(user);
+        assertGt(endBalance , startBalance);
+
+        assertApproxEqAbs(startBalance - middleBalance , middleBalance - endBalance , 1);
+
+        vm.stopPrank();
+    }
+
+    function testRedeemStraightAway(uint256 amount) public {
+        amount = bound(amount, 1e5, type(uint96).max);
+
+        vm.startPrank(user);
+        vm.deal(user, amount);
+        vault.deposit{value: amount}();
+        assertEq(rebaseToken.balanceOf(user), amount);
+
+        vault.redeem(type(uint256).max);
+        assertEq(rebaseToken.balanceOf(user),0);
+        assertEq(address(user).balance , amount);
+
+        vm.stopPrank();
+
+    }
+    function testRedeemAfterTimePassed(uint256 depositAmount , uint256 time) public {
+        time = bound(time,1000,type(uint96).max);
+        depositAmount = bound(depositAmount, 1e5, type(uint96).max);
+
+        vm.deal(user, depositAmount);
+        vm.prank(user);
+        vault.deposit{value: depositAmount}();
+
+        vm.warp(block.timestamp + time);
+        uint256 balanceAfterSomeTime = rebaseToken.balanceOf(user);
+        vm.deal(user, balanceAfterSomeTime - depositAmount);
+
+        vm.prank(owner);
+
+        addRewardsToVault( balanceAfterSomeTime - depositAmount);
+        vm.prank(user);
+        vault.redeem(type(uint256).max);
         
+
+        uint256 ethBalance = address(user).balance;
+
+        assertEq(ethBalance , depositAmount);
+        assertGt(ethBalance, depositAmount);
+
     }
 }
