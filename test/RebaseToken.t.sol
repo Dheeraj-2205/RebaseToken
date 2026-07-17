@@ -5,6 +5,9 @@ pragma solidity ^0.8.24;
 import {Test} from "forge-std/Test.sol";
 import {console} from "forge-std/console.sol";
 
+import {Ownable} from "@openzeppelin-contracts/contracts/access/Ownable.sol";
+import {IAccessControl} from "@openzeppelin-contracts/contracts/access/AccessControl.sol";
+
 import {RebaseToken} from "../src/RebaseToken.sol";
 import {Vault} from "../src/Vault.sol";
 
@@ -110,7 +113,7 @@ contract RebaseTokenTest is Test {
         vault.deposit{value:amount}();
 
         address user2 = makeAddr("user2");
-        uint256 userBalance = makeAddr(user)
+        uint256 userBalance = makeAddr(user);
         uint256 user2Balance = rebaseToken.balanceOf(user2);
         assertEq(userBalance , amount);
         assertEq(user2Balance, 0);
@@ -131,12 +134,33 @@ contract RebaseTokenTest is Test {
 
         assertEq(rebaseToken.getUserInterestRate(user), 5e10);
         assertEq(rebaseToken.getUserInterestRate(user2), 5e10);
-        
-        
+
+    }
 
 
+    function testCannotSetInterestRate(uint256 newInterestRate) public {
+        vm.prank(user);
+        vm.expectPartialRevert(bytes4(Ownable.OwnableUnauthorizedAccount.selector));
+        rebaseToken.setInterestRate(newInterestRate);   
+    }
 
+    function testCannotCallMintAndBurn() public {
+        vm.prank(user);
+        vm.expectPartialRevert(bytes4(IAccessControl.AccessControlUnauthorizedAccount.selector));
+        rebaseToken.mint(user, 100);
+        vm.expectPartialRevert(bytes(IAccessControl.AccessControlUnauthorizedAccount.selector));
+        rebaseToken.burn(user, 100);
 
+    }
 
+    function testGetPrincipleAmount(uint256 amount) public {
+        amount = bound(amount, 1e5, type(uint96).max);
+        vm.deal(user, account);
+        vm.prank(user);
+        vault.deposit{value:amount()};
+        assertEq(rebaseToken.PrincipleAmount(user), amount);
+        vm.warp(block.timestamp + 1 hours);
+
+        assertEq(rebaseToken.principalBalanceOf(user), amount);
     }
 }
