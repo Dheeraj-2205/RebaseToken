@@ -5,8 +5,8 @@ pragma solidity ^0.8.24;
 import {Test} from "forge-std/Test.sol";
 import {console} from "forge-std/console.sol";
 
-import {Ownable} from "@openzeppelin-contracts/contracts/access/Ownable.sol";
-import {IAccessControl} from "@openzeppelin-contracts/contracts/access/AccessControl.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol";
 
 import {RebaseToken} from "../src/RebaseToken.sol";
 import {Vault} from "../src/Vault.sol";
@@ -112,8 +112,10 @@ contract RebaseTokenTest is Test {
         vm.prank(user);
         vault.deposit{value:amount}();
 
+        console.log("user =====>" , user);
+
         address user2 = makeAddr("user2");
-        uint256 userBalance = makeAddr(user);
+        uint256 userBalance = rebaseToken.balanceOf(user);
         uint256 user2Balance = rebaseToken.balanceOf(user2);
         assertEq(userBalance , amount);
         assertEq(user2Balance, 0);
@@ -147,18 +149,18 @@ contract RebaseTokenTest is Test {
     function testCannotCallMintAndBurn() public {
         vm.prank(user);
         vm.expectPartialRevert(bytes4(IAccessControl.AccessControlUnauthorizedAccount.selector));
-        rebaseToken.mint(user, 100);
-        vm.expectPartialRevert(bytes(IAccessControl.AccessControlUnauthorizedAccount.selector));
+        rebaseToken.mint(user, 100 , rebaseToken.getInterestRate());
+        vm.expectPartialRevert(bytes4(IAccessControl.AccessControlUnauthorizedAccount.selector));
         rebaseToken.burn(user, 100);
 
     }
 
     function testGetPrincipleAmount(uint256 amount) public {
         amount = bound(amount, 1e5, type(uint96).max);
-        vm.deal(user, account);
+        vm.deal(user, amount);
         vm.prank(user);
-        vault.deposit{value:amount()};
-        assertEq(rebaseToken.PrincipleAmount(user), amount);
+        vault.deposit{value:amount}();
+        assertEq(rebaseToken.principalBalanceOf(user), amount);
         vm.warp(block.timestamp + 1 hours);
 
         assertEq(rebaseToken.principalBalanceOf(user), amount);
@@ -173,8 +175,8 @@ contract RebaseTokenTest is Test {
         uint256 intialInterestRate = rebaseToken.getInterestRate();
         newInterestRate = bound(newInterestRate , intialInterestRate, type(uint96).max);
         vm.prank(owner);
-        vm.expectPartialRevert(bytes4(RebaseToken.RebaseToken_InterestRateCanOnlyDecrease.selected));
+        vm.expectPartialRevert(bytes4(RebaseToken.RebaseToken_InterestRateCanOnlyDecrease.selector));
         rebaseToken.setInterestRate(newInterestRate);
-        assertEq(rebaseToken.getInterestRate() , initialInterestRate);
+        assertEq(rebaseToken.getInterestRate() , intialInterestRate);
     }
 }
