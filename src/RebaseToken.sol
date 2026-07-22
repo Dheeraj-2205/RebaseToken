@@ -1,6 +1,3 @@
-
-
-
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
@@ -14,29 +11,27 @@ contract RebaseToken is ERC20, Ownable, AccessControl {
     uint256 private s_interestRate = (5 * PRECISION_FACTOR) / 1e8;
 
     bytes32 private constant MINT_AND_BURN_ROLE = keccak256("MINT_AND_BURN_ROLE");
-    mapping (address => uint256) private s_userInterestRate;
-    mapping (address => uint256) private s_userLastUpdatedTimeStamp;
+    mapping(address => uint256) private s_userInterestRate;
+    mapping(address => uint256) private s_userLastUpdatedTimeStamp;
 
     event InterestRateSet(uint256 newInterestRate);
-    constructor() ERC20 ("Rebase Token" , "RBT") Ownable(msg.sender) {}
+    constructor() ERC20("Rebase Token", "RBT") Ownable(msg.sender) {}
 
     function grantMintAndBurnRole(address _account) external onlyOwner {
         _grantRole(MINT_AND_BURN_ROLE, _account);
     }
 
     function setInterestRate(uint256 _newInterestRate) external onlyOwner {
-        if(_newInterestRate >= s_interestRate) {
+        if (_newInterestRate >= s_interestRate) {
             revert RebaseToken_InterestRateCanOnlyDecrease(s_interestRate, _newInterestRate);
         }
         s_interestRate = _newInterestRate;
         emit InterestRateSet(_newInterestRate);
     }
 
-    function principalBalanceOf(address _user) external view returns (uint256){
+    function principalBalanceOf(address _user) external view returns (uint256) {
         return super.balanceOf(_user);
     }
-
-
 
     function mint(address _to, uint256 _amount, uint256 _userInterestRate) external onlyRole(MINT_AND_BURN_ROLE) {
         _mintAccurateInterest(_to);
@@ -44,7 +39,7 @@ contract RebaseToken is ERC20, Ownable, AccessControl {
         _mint(_to, _amount);
     }
 
-    function burn (address _from , uint256 _amount) external onlyRole(MINT_AND_BURN_ROLE) {
+    function burn(address _from, uint256 _amount) external onlyRole(MINT_AND_BURN_ROLE) {
         // if(_amount > type(uint256).max) {
         //     _amount = balanceOf(_from);
         // }
@@ -52,21 +47,19 @@ contract RebaseToken is ERC20, Ownable, AccessControl {
         _burn(_from, _amount);
     }
 
-
-
-    function balanceOf(address _user) public view override returns (uint256){
+    function balanceOf(address _user) public view override returns (uint256) {
         return super.balanceOf(_user) * _calculateUserAccumulatedInterestSinceLastUpdated(_user) / PRECISION_FACTOR;
     }
 
-    function transfer(address _recipient , uint256 _amount) public override returns (bool) {
+    function transfer(address _recipient, uint256 _amount) public override returns (bool) {
         _mintAccurateInterest(msg.sender);
         _mintAccurateInterest(_recipient);
 
-        if(_amount == type(uint256).max) {
+        if (_amount == type(uint256).max) {
             _amount = balanceOf(msg.sender);
         }
 
-        if(balanceOf(_recipient) == 0){
+        if (balanceOf(_recipient) == 0) {
             s_userInterestRate[_recipient] = s_userInterestRate[msg.sender];
         }
 
@@ -77,48 +70,41 @@ contract RebaseToken is ERC20, Ownable, AccessControl {
         _mintAccurateInterest(_sender);
         _mintAccurateInterest(_recipient);
 
-        if(_amount == type(uint256).max) {
+        if (_amount == type(uint256).max) {
             _amount = balanceOf(_sender);
         }
 
-        if(balanceOf(_recipient) == 0){
+        if (balanceOf(_recipient) == 0) {
             s_userInterestRate[_recipient] = s_userInterestRate[_sender];
         }
 
         return super.transferFrom(_sender, _recipient, _amount);
-
     }
 
-
-
-
-
-
-
-    function _calculateUserAccumulatedInterestSinceLastUpdated(address _user) internal view returns (uint256 linearInterest){
+    function _calculateUserAccumulatedInterestSinceLastUpdated(address _user)
+        internal
+        view
+        returns (uint256 linearInterest)
+    {
         uint256 timeElapsed = block.timestamp - s_userLastUpdatedTimeStamp[_user];
         linearInterest = (PRECISION_FACTOR + (s_userInterestRate[_user] * timeElapsed));
     }
 
-    function _mintAccurateInterest(address _user) internal {  
+    function _mintAccurateInterest(address _user) internal {
         uint256 previousPrincipalBalance = super.balanceOf(_user);
         uint256 currentBalance = balanceOf(_user);
         uint256 balanceIncrease = currentBalance - previousPrincipalBalance;
 
         s_userLastUpdatedTimeStamp[_user] = block.timestamp;
 
-        _mint(_user , balanceIncrease);
-
+        _mint(_user, balanceIncrease);
     }
 
     function getInterestRate() external view returns (uint256) {
         return s_interestRate;
     }
 
-
     function getUserInterestRate(address _user) external view returns (uint256) {
         return s_userInterestRate[_user];
     }
-
-
 }

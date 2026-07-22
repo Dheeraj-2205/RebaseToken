@@ -6,16 +6,20 @@ import {Pool} from "@ccip/contracts/libraries/Pool.sol";
 import {IERC20} from "@openzeppelin/contracts@4.8.3/token/ERC20/IERC20.sol";
 import {IRebaseToken} from "./interface/IRebaseToken.sol";
 
-
 contract RebaseTokenPool is TokenPool {
-    constructor(IERC20 _token, uint8 _localTokenDecimals, address[] memory _allowList, address _rawProxy, address _router) 
-        TokenPool(_token, _localTokenDecimals, _allowList, _rawProxy, _router)
-    {
+    constructor(
+        IERC20 _token,
+        uint8 _localTokenDecimals,
+        address[] memory _allowList,
+        address _rawProxy,
+        address _router
+    ) TokenPool(_token, _localTokenDecimals, _allowList, _rawProxy, _router) {}
 
-    }
-
-    function lockOrBurn(Pool.LockOrBurnInV1 calldata lockOrBurnIn) 
-        public virtual override returns (Pool.LockOrBurnOutV1 memory lockOrBurnOut)
+    function lockOrBurn(Pool.LockOrBurnInV1 calldata lockOrBurnIn)
+        public
+        virtual
+        override
+        returns (Pool.LockOrBurnOutV1 memory lockOrBurnOut)
     {
         _validateLockOrBurn(lockOrBurnIn);
         address originalSender = lockOrBurnIn.originalSender;
@@ -27,15 +31,16 @@ contract RebaseTokenPool is TokenPool {
         });
     }
 
-    function releaseOrMint(Pool.ReleaseOrMintInV1 calldata releaseOrMintIn) 
-        public virtual override returns (Pool.ReleaseOrMintOutV1 memory)
+    function releaseOrMint(Pool.ReleaseOrMintInV1 calldata releaseOrMintIn)
+        public
+        virtual
+        override
+        returns (Pool.ReleaseOrMintOutV1 memory)
     {
         _validateReleaseOrMint(releaseOrMintIn, releaseOrMintIn.sourceDenominatedAmount);
         uint256 userInterestRate = abi.decode(releaseOrMintIn.sourcePoolData, (uint256));
-        IRebaseToken(address(i_token)).mint(releaseOrMintIn.receiver, releaseOrMintIn.sourceDenominatedAmount, userInterestRate);
-        return Pool.ReleaseOrMintOutV1({
-            destinationAmount: releaseOrMintIn.sourceDenominatedAmount
-        });
+        IRebaseToken(address(i_token))
+            .mint(releaseOrMintIn.receiver, releaseOrMintIn.sourceDenominatedAmount, userInterestRate);
+        return Pool.ReleaseOrMintOutV1({destinationAmount: releaseOrMintIn.sourceDenominatedAmount});
     }
-
 }
